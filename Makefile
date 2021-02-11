@@ -9,3 +9,7 @@ run:
 	export GOFLAGS="-trimpath"
 	go build -o k8s-images-cli -v ./cmd
 	./k8s-images-cli -logLevel=INFO $(args)
+build:
+	@./scripts/build-all.sh
+	ls -lah _dist
+	go mod tidy

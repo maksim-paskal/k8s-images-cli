@@ -1,2 +1,3 @@
 k8s-images-cli
 .imageignore
+_dist
