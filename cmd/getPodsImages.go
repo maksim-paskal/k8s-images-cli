@@ -14,6 +14,7 @@ package main
 
 import (
 	"context"
+	"regexp"
 
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -30,8 +31,14 @@ func logContainerInfo(logEntry *log.Entry, container v1.Container, imageignore *
 	log.Debug(container.Image)
 
 	printInfo := false
-	if len(*appConfig.Image) > 0 && *appConfig.Image == container.Image {
-		printInfo = true
+
+	if len(*appConfig.Image) > 0 {
+		isMatch, err := regexp.MatchString(*appConfig.Image, container.Image)
+		if err != nil {
+			log.WithError(err).Error("error in regexp.MatchString")
+		}
+
+		printInfo = isMatch
 	}
 
 	if len(*appConfig.ImagePullPolicy) > 0 && *appConfig.ImagePullPolicy == string(container.ImagePullPolicy) {
