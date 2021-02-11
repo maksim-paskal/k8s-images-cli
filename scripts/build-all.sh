@@ -22,11 +22,11 @@ export TAGS=""
 export GOFLAGS="-trimpath"
 export LDFLAGS="-X main.buildTime=`date +\"%Y%m%d%H%M%S\"` -X main.gitVersion=$(git describe --tags `git rev-list --tags --max-count=1`)-$(git log -n1 --pretty='%H')"
 export TARGETS="darwin/amd64 linux/amd64"
-export BINNAME="go-template"
+export BINNAME="k8s-images-cli"
 export GOX="go run github.com/mitchellh/gox"
 
 rm -rf _dist
 
 $GOX -parallel=3 -output="_dist/$BINNAME-{{.OS}}-{{.Arch}}" -osarch="$TARGETS" -tags "$TAGS" -ldflags "$LDFLAGS" ./cmd
 
-shasum -a 256 ./_dist/go-template* > ./_dist/sha256.txt
+shasum -a 256 ./_dist/k8s-images-cli* > ./_dist/sha256.txt
