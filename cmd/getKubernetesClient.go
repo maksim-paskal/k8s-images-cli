@@ -19,14 +19,14 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-func getKubernetesClient() (*kubernetes.Clientset, error) {
+func getKubernetesClient(kubeConfigFile string) (*kubernetes.Clientset, error) {
 	var (
 		kubeconfig *rest.Config
 		err        error
 	)
 
-	if len(*appConfig.KubeConfigFile) > 0 {
-		kubeconfig, err = clientcmd.BuildConfigFromFlags("", *appConfig.KubeConfigFile)
+	if len(kubeConfigFile) > 0 {
+		kubeconfig, err = clientcmd.BuildConfigFromFlags("", kubeConfigFile)
 		if err != nil {
 			return nil, errors.Wrap(err, "clientcmd.BuildConfigFromFlags")
 		}

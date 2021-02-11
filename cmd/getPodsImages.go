@@ -19,11 +19,15 @@ import (
 	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 )
 
-func getPodsImages(clientset *kubernetes.Clientset) (map[string]v1.Pod, error) {
+func getPodsImages(kubeConfigFile string) (map[string]v1.Pod, error) {
 	images := make(map[string]v1.Pod)
+
+	clientset, err := getKubernetesClient(kubeConfigFile)
+	if err != nil {
+		return images, errors.Wrap(err, "error creating kubernetes client")
+	}
 
 	pods, err := clientset.CoreV1().Pods(*appConfig.Namespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
@@ -32,12 +36,17 @@ func getPodsImages(clientset *kubernetes.Clientset) (map[string]v1.Pod, error) {
 
 	for _, pod := range pods.Items {
 		log := log.WithFields(log.Fields{
-			"pod":       pod.Name,
-			"namespace": pod.Namespace,
+			"kubeConfigFile": kubeConfigFile,
+			"pod":            pod.Name,
+			"namespace":      pod.Namespace,
 		})
 
 		for _, initContainer := range pod.Spec.InitContainers {
 			log.Debug(initContainer.Image)
+
+			if len(*appConfig.Image) > 0 && *appConfig.Image == initContainer.Image {
+				log.Info(initContainer.Image)
+			}
 
 			if _, ok := images[initContainer.Image]; !ok {
 				images[initContainer.Image] = pod
@@ -46,6 +55,10 @@ func getPodsImages(clientset *kubernetes.Clientset) (map[string]v1.Pod, error) {
 
 		for _, container := range pod.Spec.Containers {
 			log.Debug(container.Image)
+
+			if len(*appConfig.Image) > 0 && *appConfig.Image == container.Image {
+				log.Info(container.Image)
+			}
 
 			if _, ok := images[container.Image]; !ok {
 				images[container.Image] = pod

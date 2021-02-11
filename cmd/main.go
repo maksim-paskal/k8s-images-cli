@@ -17,8 +17,10 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
+	v1 "k8s.io/api/core/v1"
 )
 
 //nolint:gochecknoglobals
@@ -39,14 +41,30 @@ func main() {
 		os.Exit(0)
 	}
 
-	clientset, err := getKubernetesClient()
-	if err != nil {
-		log.Fatal(err)
+	kubeconfigs := []string{*appConfig.KubeConfigFile}
+	images := make(map[string]v1.Pod)
+
+	if len(*appConfig.KubeConfigMultipleFiles) > 0 {
+		kubeconfigs = strings.Split(*appConfig.KubeConfigMultipleFiles, ",")
 	}
 
-	images, err := getPodsImages(clientset)
-	if err != nil {
-		log.Fatal(err)
+	for _, kubeconfig := range kubeconfigs {
+		kubeconfigImages, err := getPodsImages(kubeconfig)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		for k, v := range kubeconfigImages {
+			if _, ok := images[k]; !ok {
+				images[k] = v
+			}
+		}
+	}
+
+	if len(*appConfig.Image) > 0 {
+		log.Debug("close app when image argument found")
+
+		return
 	}
 
 	result := []string{}
@@ -57,6 +75,10 @@ func main() {
 
 	sort.Strings(result)
 
+	printResults(result)
+}
+
+func printResults(result []string) {
 	imageignore, err := getImageIgnore()
 	if err != nil {
 		log.Debug(err)
@@ -68,6 +90,8 @@ func main() {
 		if !isIgnored {
 			//nolint:forbidigo
 			fmt.Println(image)
+		} else {
+			log.Debugf("ignored by imageignore %s", image)
 		}
 	}
 }
