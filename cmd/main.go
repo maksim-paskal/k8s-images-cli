@@ -41,15 +41,16 @@ func main() {
 		os.Exit(0)
 	}
 
-	kubeconfigs := []string{*appConfig.KubeConfigFile}
-	images := make(map[string]v1.Pod)
-
-	if len(*appConfig.KubeConfigMultipleFiles) > 0 {
-		kubeconfigs = strings.Split(*appConfig.KubeConfigMultipleFiles, ",")
+	imageignore, err := getImageIgnore()
+	if err != nil {
+		log.Debug(err)
 	}
 
+	kubeconfigs := strings.Split(*appConfig.KubeConfigFile, ",")
+	images := make(map[string]v1.Pod)
+
 	for _, kubeconfig := range kubeconfigs {
-		kubeconfigImages, err := getPodsImages(kubeconfig)
+		kubeconfigImages, err := getPodsImages(kubeconfig, imageignore)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -61,8 +62,8 @@ func main() {
 		}
 	}
 
-	if len(*appConfig.Image) > 0 {
-		log.Debug("close app when image argument found")
+	if len(*appConfig.Image) > 0 || len(*appConfig.ImagePullPolicy) > 0 {
+		log.Debug("close app when Image or ImagePullPolicy argument found")
 
 		return
 	}
@@ -75,15 +76,10 @@ func main() {
 
 	sort.Strings(result)
 
-	printResults(result)
+	printResults(imageignore, result)
 }
 
-func printResults(result []string) {
-	imageignore, err := getImageIgnore()
-	if err != nil {
-		log.Debug(err)
-	}
-
+func printResults(imageignore *ImageIgnore, result []string) {
 	for _, image := range result {
 		isIgnored := imageignore.match(image)
 

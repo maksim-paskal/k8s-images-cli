@@ -18,24 +18,24 @@ import (
 )
 
 type AppConfig struct {
-	Version                 string
-	showVersion             *bool
-	KubeConfigFile          *string
-	ImageIgnoreFile         *string
-	LogLevel                *string
-	Namespace               *string
-	KubeConfigMultipleFiles *string
-	Image                   *string
+	Version         string
+	showVersion     *bool
+	KubeConfigFile  *string
+	ImageIgnoreFile *string
+	LogLevel        *string
+	Namespace       *string
+	Image           *string
+	ImagePullPolicy *string
 }
 
 //nolint:gochecknoglobals
 var appConfig = &AppConfig{
-	Version:                 gitVersion,
-	showVersion:             flag.Bool("version", false, "show version"),
-	Namespace:               flag.String("namespace", "", "fileter by namespace"),
-	LogLevel:                flag.String("logLevel", "INFO", "log level"),
-	KubeConfigFile:          flag.String("kubeconfig", os.Getenv("KUBECONFIG"), "kubeconfig path"),
-	ImageIgnoreFile:         flag.String("imageignorefile", ".imageignore", "ignore image file"),
-	KubeConfigMultipleFiles: flag.String("multiplekubeconfig", "", "many coma separated kubeconfig path"),
-	Image:                   flag.String("image", "", "pod info by image"),
+	Version:         gitVersion,
+	showVersion:     flag.Bool("version", false, "show version"),
+	Namespace:       flag.String("namespace", "", "fileter by namespace"),
+	LogLevel:        flag.String("logLevel", "INFO", "log level"),
+	KubeConfigFile:  flag.String("kubeconfig", os.Getenv("KUBECONFIG"), "kubeconfig path comma separated"),
+	ImageIgnoreFile: flag.String("imageignorefile", ".imageignore", "ignore image file"),
+	Image:           flag.String("image", "", "pod info by image"),
+	ImagePullPolicy: flag.String("imagepoolpolicy", "", "pod info by ImagePullPolicy (Always or IfNotPresent or Never)"),
 }

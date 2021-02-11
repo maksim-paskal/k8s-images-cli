@@ -21,7 +21,29 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func getPodsImages(kubeConfigFile string) (map[string]v1.Pod, error) {
+func logContainerInfo(logEntry *log.Entry, container v1.Container, imageignore *ImageIgnore) {
+	log := logEntry.WithFields(log.Fields{
+		"container":       container.Name,
+		"ImagePullPolicy": container.ImagePullPolicy,
+	})
+
+	log.Debug(container.Image)
+
+	printInfo := false
+	if len(*appConfig.Image) > 0 && *appConfig.Image == container.Image {
+		printInfo = true
+	}
+
+	if len(*appConfig.ImagePullPolicy) > 0 && *appConfig.ImagePullPolicy == string(container.ImagePullPolicy) {
+		printInfo = true
+	}
+
+	if printInfo && !imageignore.match(container.Image) {
+		log.Info(container.Image)
+	}
+}
+
+func getPodsImages(kubeConfigFile string, imageignore *ImageIgnore) (map[string]v1.Pod, error) {
 	images := make(map[string]v1.Pod)
 
 	clientset, err := getKubernetesClient(kubeConfigFile)
@@ -42,11 +64,7 @@ func getPodsImages(kubeConfigFile string) (map[string]v1.Pod, error) {
 		})
 
 		for _, initContainer := range pod.Spec.InitContainers {
-			log.Debug(initContainer.Image)
-
-			if len(*appConfig.Image) > 0 && *appConfig.Image == initContainer.Image {
-				log.Info(initContainer.Image)
-			}
+			logContainerInfo(log, initContainer, imageignore)
 
 			if _, ok := images[initContainer.Image]; !ok {
 				images[initContainer.Image] = pod
@@ -54,11 +72,7 @@ func getPodsImages(kubeConfigFile string) (map[string]v1.Pod, error) {
 		}
 
 		for _, container := range pod.Spec.Containers {
-			log.Debug(container.Image)
-
-			if len(*appConfig.Image) > 0 && *appConfig.Image == container.Image {
-				log.Info(container.Image)
-			}
+			logContainerInfo(log, container, imageignore)
 
 			if _, ok := images[container.Image]; !ok {
 				images[container.Image] = pod

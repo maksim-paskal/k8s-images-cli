@@ -22,12 +22,14 @@ import (
 )
 
 type ImageIgnore struct {
-	rules []string
+	rules    []string
+	isLoaded bool
 }
 
 func getImageIgnore() (*ImageIgnore, error) {
 	ig := ImageIgnore{
-		rules: make([]string, 0),
+		rules:    make([]string, 0),
+		isLoaded: false,
 	}
 
 	file, err := os.Open(*appConfig.ImageIgnoreFile)
@@ -45,11 +47,13 @@ func getImageIgnore() (*ImageIgnore, error) {
 		log.WithError(err).Debug("some error in scaner")
 	}
 
+	ig.isLoaded = true
+
 	return &ig, nil
 }
 
 func (ig *ImageIgnore) match(image string) bool {
-	if len(ig.rules) > 0 {
+	if ig.isLoaded && len(ig.rules) > 0 {
 		for _, ignoreRule := range ig.rules {
 			isMatch, err := regexp.MatchString(ignoreRule, image)
 			if err != nil {
