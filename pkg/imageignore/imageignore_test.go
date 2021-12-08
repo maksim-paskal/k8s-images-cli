@@ -10,19 +10,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package main
+package imageignore_test
 
 import (
 	"testing"
+
+	"github.com/maksim-paskal/k8s-images-cli/pkg/imageignore"
 )
 
 func TestGetImageIgnore(t *testing.T) {
 	t.Parallel()
 
-	testImageIgnoreFile := "../scripts/imageignore.test"
-	appConfig.ImageIgnoreFile = &testImageIgnoreFile
-
-	imageignore, err := getImageIgnore()
+	imageignore, err := imageignore.New("./testdata/imageignore.test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,7 +34,7 @@ func TestGetImageIgnore(t *testing.T) {
 	}
 
 	for _, v := range mustMatch {
-		if !imageignore.match(v) {
+		if !imageignore.Match(v) {
 			t.Fatalf("image must match %s", v)
 		}
 	}
@@ -48,7 +47,7 @@ func TestGetImageIgnore(t *testing.T) {
 	}
 
 	for _, v := range mustNotMatch {
-		if imageignore.match(v) {
+		if imageignore.Match(v) {
 			t.Fatalf("image must not match %s", v)
 		}
 	}

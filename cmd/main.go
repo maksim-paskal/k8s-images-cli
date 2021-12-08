@@ -19,38 +19,40 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/maksim-paskal/k8s-images-cli/pkg/api"
+	"github.com/maksim-paskal/k8s-images-cli/pkg/config"
+	"github.com/maksim-paskal/k8s-images-cli/pkg/imageignore"
 	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 )
 
-//nolint:gochecknoglobals
-var gitVersion string = "dev"
+var version = flag.Bool("version", false, "show version")
 
-func main() {
+func main() { //nolint:cyclop
 	flag.Parse()
 
-	logLevel, err := log.ParseLevel(*appConfig.LogLevel)
+	logLevel, err := log.ParseLevel(*config.Get().LogLevel)
 	if err != nil {
 		log.WithError(err).Fatal("error parse level")
 	}
 
 	log.SetLevel(logLevel)
 
-	if *appConfig.showVersion {
-		os.Stdout.WriteString(appConfig.Version)
+	if *version {
+		os.Stdout.WriteString(config.GetVersion())
 		os.Exit(0)
 	}
 
-	imageignore, err := getImageIgnore()
+	imageignore, err := imageignore.New(*config.Get().ImageIgnoreFile)
 	if err != nil {
 		log.Debug(err)
 	}
 
-	kubeconfigs := strings.Split(*appConfig.KubeConfigFile, ",")
+	kubeconfigs := strings.Split(*config.Get().KubeConfigFile, ",")
 	images := make(map[string]v1.Pod)
 
 	for _, kubeconfig := range kubeconfigs {
-		kubeconfigImages, err := getPodsImages(kubeconfig, imageignore)
+		kubeconfigImages, err := api.GetPodsImages(kubeconfig, imageignore)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -62,7 +64,7 @@ func main() {
 		}
 	}
 
-	if len(*appConfig.Image) > 0 || len(*appConfig.ImagePullPolicy) > 0 {
+	if len(*config.Get().Image) > 0 || len(*config.Get().ImagePullPolicy) > 0 {
 		log.Debug("close app when Image or ImagePullPolicy argument found")
 
 		return
@@ -79,9 +81,9 @@ func main() {
 	printResults(imageignore, result)
 }
 
-func printResults(imageignore *ImageIgnore, result []string) {
+func printResults(imageignore *imageignore.Type, result []string) {
 	for _, image := range result {
-		isIgnored := imageignore.match(image)
+		isIgnored := imageignore.Match(image)
 
 		if !isIgnored {
 			//nolint:forbidigo
