@@ -10,7 +10,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package main
+package imageignore
 
 import (
 	"bufio"
@@ -21,38 +21,38 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type ImageIgnore struct {
+type Type struct {
 	rules    []string
 	isLoaded bool
 }
 
-func getImageIgnore() (*ImageIgnore, error) {
-	ig := ImageIgnore{
+func New(imageIgnoreFile string) (*Type, error) {
+	imageIgnore := Type{
 		rules:    make([]string, 0),
 		isLoaded: false,
 	}
 
-	file, err := os.Open(*appConfig.ImageIgnoreFile)
+	file, err := os.Open(imageIgnoreFile)
 	if err != nil {
-		return &ig, errors.Wrap(err, "cant open file")
+		return &imageIgnore, errors.Wrap(err, "cant open file")
 	}
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		ig.rules = append(ig.rules, scanner.Text())
+		imageIgnore.rules = append(imageIgnore.rules, scanner.Text())
 	}
 
 	if err := scanner.Err(); err != nil {
 		log.WithError(err).Debug("some error in scaner")
 	}
 
-	ig.isLoaded = true
+	imageIgnore.isLoaded = true
 
-	return &ig, nil
+	return &imageIgnore, nil
 }
 
-func (ig *ImageIgnore) match(image string) bool {
+func (ig *Type) Match(image string) bool {
 	if ig.isLoaded && len(ig.rules) > 0 {
 		for _, ignoreRule := range ig.rules {
 			isMatch, err := regexp.MatchString(ignoreRule, image)

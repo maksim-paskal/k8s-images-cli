@@ -1,15 +1,11 @@
 test:
 	./scripts/validate-license.sh
-	go fmt ./cmd
+	go fmt ./cmd ./pkg/...
+	go vet ./cmd ./pkg/...
 	go mod tidy
-	go test -race ./cmd
-	golangci-lint run --allow-parallel-runners -v --enable-all --disable testpackage --fix
+	go test -race ./cmd ./pkg/...
+	go run github.com/golangci/golangci-lint/cmd/golangci-lint@latest run -v
 run:
-	export CGO_ENABLED=0
-	export GOFLAGS="-trimpath"
-	go build -o k8s-images-cli -v ./cmd
-	./k8s-images-cli -logLevel=INFO $(args)
-build:
-	@./scripts/build-all.sh
-	ls -lah _dist
-	go mod tidy
+	go run -race ./cmd -logLevel=INFO $(args)
+test-release:
+	go run github.com/goreleaser/goreleaser@latest release --snapshot --skip-publish --rm-dist

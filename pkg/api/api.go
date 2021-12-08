@@ -10,19 +10,50 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package main
+package api
 
 import (
 	"context"
 	"regexp"
 
+	"github.com/maksim-paskal/k8s-images-cli/pkg/config"
+	"github.com/maksim-paskal/k8s-images-cli/pkg/imageignore"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
-func logContainerInfo(logEntry *log.Entry, container v1.Container, imageignore *ImageIgnore) {
+func getKubernetesClient(kubeConfigFile string) (*kubernetes.Clientset, error) {
+	var (
+		kubeconfig *rest.Config
+		err        error
+	)
+
+	if len(kubeConfigFile) > 0 {
+		kubeconfig, err = clientcmd.BuildConfigFromFlags("", kubeConfigFile)
+		if err != nil {
+			return nil, errors.Wrap(err, "clientcmd.BuildConfigFromFlags")
+		}
+	} else {
+		kubeconfig, err = rest.InClusterConfig()
+		if err != nil {
+			return nil, errors.Wrap(err, "rest.InClusterConfig")
+		}
+	}
+
+	clientset, err := kubernetes.NewForConfig(kubeconfig)
+	if err != nil {
+		return nil, errors.Wrap(err, "kubernetes.NewForConfig")
+	}
+
+	return clientset, nil
+}
+
+func logContainerInfo(logEntry *log.Entry, container corev1.Container, imageignore *imageignore.Type) {
 	log := logEntry.WithFields(log.Fields{
 		"container":       container.Name,
 		"ImagePullPolicy": container.ImagePullPolicy,
@@ -32,8 +63,8 @@ func logContainerInfo(logEntry *log.Entry, container v1.Container, imageignore *
 
 	printInfo := false
 
-	if len(*appConfig.Image) > 0 {
-		isMatch, err := regexp.MatchString(*appConfig.Image, container.Image)
+	if len(*config.Get().Image) > 0 {
+		isMatch, err := regexp.MatchString(*config.Get().Image, container.Image)
 		if err != nil {
 			log.WithError(err).Error("error in regexp.MatchString")
 		}
@@ -41,24 +72,24 @@ func logContainerInfo(logEntry *log.Entry, container v1.Container, imageignore *
 		printInfo = isMatch
 	}
 
-	if len(*appConfig.ImagePullPolicy) > 0 && *appConfig.ImagePullPolicy == string(container.ImagePullPolicy) {
+	if len(*config.Get().ImagePullPolicy) > 0 && *config.Get().ImagePullPolicy == string(container.ImagePullPolicy) {
 		printInfo = true
 	}
 
-	if printInfo && !imageignore.match(container.Image) {
+	if printInfo && !imageignore.Match(container.Image) {
 		log.Info(container.Image)
 	}
 }
 
-func getPodsImages(kubeConfigFile string, imageignore *ImageIgnore) (map[string]v1.Pod, error) {
-	images := make(map[string]v1.Pod)
+func GetPodsImages(kubeConfigFile string, imageignore *imageignore.Type) (map[string]corev1.Pod, error) {
+	images := make(map[string]corev1.Pod)
 
 	clientset, err := getKubernetesClient(kubeConfigFile)
 	if err != nil {
 		return images, errors.Wrap(err, "error creating kubernetes client")
 	}
 
-	pods, err := clientset.CoreV1().Pods(*appConfig.Namespace).List(context.TODO(), metav1.ListOptions{})
+	pods, err := clientset.CoreV1().Pods(*config.Get().Namespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return images, errors.Wrap(err, "error get pods")
 	}

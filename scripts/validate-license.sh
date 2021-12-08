@@ -23,7 +23,7 @@ find_files() {
       -o -wholename '*third_party*' \
     \) -prune \
   \) \
-  \( -name '*.go' -o -name '*.sh' \)
+  \( -name '*.go' -o -name '*.sh' -o -name 'LICENSE' \)
 }
 
 # Use "|| :" to ignore the error code when grep returns empty

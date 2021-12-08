@@ -10,7 +10,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package main
+package config
 
 import (
 	"flag"
@@ -18,8 +18,6 @@ import (
 )
 
 type AppConfig struct {
-	Version         string
-	showVersion     *bool
 	KubeConfigFile  *string
 	ImageIgnoreFile *string
 	LogLevel        *string
@@ -30,12 +28,21 @@ type AppConfig struct {
 
 //nolint:gochecknoglobals
 var appConfig = &AppConfig{
-	Version:         gitVersion,
-	showVersion:     flag.Bool("version", false, "show version"),
-	Namespace:       flag.String("namespace", "", "fileter by namespace"),
+	Namespace:       flag.String("namespace", "", "filter by namespace"),
 	LogLevel:        flag.String("logLevel", "INFO", "log level"),
-	KubeConfigFile:  flag.String("kubeconfig", os.Getenv("KUBECONFIG"), "kubeconfig path comma separated"),
+	KubeConfigFile:  flag.String("kubeconfig", os.Getenv("KUBECONFIG"), "kubeconfig path(s) (comma separated)"),
 	ImageIgnoreFile: flag.String("imageignorefile", ".imageignore", "ignore image file"),
-	Image:           flag.String("image", "", "pod info by image"),
-	ImagePullPolicy: flag.String("imagepoolpolicy", "", "pod info by ImagePullPolicy (Always or IfNotPresent or Never)"),
+	Image:           flag.String("image", "", "filter by by image"),
+	ImagePullPolicy: flag.String("imagepoolpolicy", "", "filter by ImagePullPolicy (Always or IfNotPresent or Never)"),
+}
+
+func Get() *AppConfig {
+	return appConfig
+}
+
+//nolint:gochecknoglobals
+var gitVersion = "dev"
+
+func GetVersion() string {
+	return gitVersion
 }
