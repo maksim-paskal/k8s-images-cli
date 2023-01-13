@@ -13,22 +13,18 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"flag"
-	"fmt"
 	"os"
-	"sort"
-	"strings"
 
-	"github.com/maksim-paskal/k8s-images-cli/pkg/api"
+	"github.com/maksim-paskal/k8s-images-cli/internal"
 	"github.com/maksim-paskal/k8s-images-cli/pkg/config"
-	"github.com/maksim-paskal/k8s-images-cli/pkg/imageignore"
 	log "github.com/sirupsen/logrus"
-	v1 "k8s.io/api/core/v1"
 )
 
 var version = flag.Bool("version", false, "show version")
 
-func main() { //nolint:cyclop
+func main() {
 	flag.Parse()
 
 	logLevel, err := log.ParseLevel(*config.Get().LogLevel)
@@ -43,53 +39,7 @@ func main() { //nolint:cyclop
 		os.Exit(0)
 	}
 
-	imageignore, err := imageignore.New(*config.Get().ImageIgnoreFile)
-	if err != nil {
-		log.Debug(err)
-	}
-
-	kubeconfigs := strings.Split(*config.Get().KubeConfigFile, ",")
-	images := make(map[string]v1.Pod)
-
-	for _, kubeconfig := range kubeconfigs {
-		kubeconfigImages, err := api.GetPodsImages(kubeconfig, imageignore)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		for k, v := range kubeconfigImages {
-			if _, ok := images[k]; !ok {
-				images[k] = v
-			}
-		}
-	}
-
-	if len(*config.Get().Image) > 0 || len(*config.Get().ImagePullPolicy) > 0 {
-		log.Debug("close app when Image or ImagePullPolicy argument found")
-
-		return
-	}
-
-	result := []string{}
-
-	for k := range images {
-		result = append(result, k)
-	}
-
-	sort.Strings(result)
-
-	printResults(imageignore, result)
-}
-
-func printResults(imageignore *imageignore.Type, result []string) {
-	for _, image := range result {
-		isIgnored := imageignore.Match(image)
-
-		if !isIgnored {
-			//nolint:forbidigo
-			fmt.Println(image)
-		} else {
-			log.Debugf("ignored by imageignore %s", image)
-		}
+	if err := internal.Run(context.Background()); err != nil {
+		log.Fatal(err)
 	}
 }
