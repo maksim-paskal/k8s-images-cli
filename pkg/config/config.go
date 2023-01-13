@@ -24,6 +24,8 @@ type AppConfig struct {
 	Namespace       *string
 	Image           *string
 	ImagePullPolicy *string
+	ImageArch       *string
+	ShowArch        *bool
 }
 
 //nolint:gochecknoglobals
@@ -32,8 +34,10 @@ var appConfig = &AppConfig{
 	LogLevel:        flag.String("logLevel", "INFO", "log level"),
 	KubeConfigFile:  flag.String("kubeconfig", os.Getenv("KUBECONFIG"), "kubeconfig path(s) (comma separated)"),
 	ImageIgnoreFile: flag.String("imageignorefile", ".imageignore", "ignore image file"),
-	Image:           flag.String("image", "", "filter by by image"),
+	Image:           flag.String("image", "", "filter by image"),
 	ImagePullPolicy: flag.String("imagepoolpolicy", "", "filter by ImagePullPolicy (Always or IfNotPresent or Never)"),
+	ImageArch:       flag.String("arch", "", "filter by Arch (amd64 or arm64)"),
+	ShowArch:        flag.Bool("showArch", false, "show image arch"),
 }
 
 func Get() *AppConfig {

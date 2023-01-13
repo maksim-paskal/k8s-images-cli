@@ -20,7 +20,6 @@ import (
 	"github.com/maksim-paskal/k8s-images-cli/pkg/imageignore"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -53,18 +52,18 @@ func getKubernetesClient(kubeConfigFile string) (*kubernetes.Clientset, error) {
 	return clientset, nil
 }
 
-func logContainerInfo(logEntry *log.Entry, container corev1.Container, imageignore *imageignore.Type) {
+func logImage(logEntry *log.Entry, image *Image, imageignore *imageignore.Type) {
 	log := logEntry.WithFields(log.Fields{
-		"container":       container.Name,
-		"ImagePullPolicy": container.ImagePullPolicy,
+		"ImageArch":       image.ImageArch,
+		"ImagePullPolicy": image.ImagePullPolicy,
 	})
 
-	log.Debug(container.Image)
+	log.Debug(image.ImageName)
 
 	printInfo := false
 
 	if len(*config.Get().Image) > 0 {
-		isMatch, err := regexp.MatchString(*config.Get().Image, container.Image)
+		isMatch, err := regexp.MatchString(*config.Get().Image, image.ImageName)
 		if err != nil {
 			log.WithError(err).Error("error in regexp.MatchString")
 		}
@@ -72,26 +71,47 @@ func logContainerInfo(logEntry *log.Entry, container corev1.Container, imageigno
 		printInfo = isMatch
 	}
 
-	if len(*config.Get().ImagePullPolicy) > 0 && *config.Get().ImagePullPolicy == string(container.ImagePullPolicy) {
+	if len(*config.Get().ImagePullPolicy) > 0 && *config.Get().ImagePullPolicy == image.ImagePullPolicy {
 		printInfo = true
 	}
 
-	if printInfo && !imageignore.Match(container.Image) {
-		log.Info(container.Image)
+	if len(*config.Get().ImageArch) > 0 && *config.Get().ImageArch == image.ImageArch {
+		printInfo = true
+	}
+
+	if printInfo && !imageignore.Match(image.ImageName) {
+		log.Info(image.ImageName)
 	}
 }
 
-func GetPodsImages(kubeConfigFile string, imageignore *imageignore.Type) (map[string]corev1.Pod, error) {
-	images := make(map[string]corev1.Pod)
+type Image struct {
+	ImageName       string
+	ImagePullPolicy string
+	PodName         string
+	ImageArch       string
+}
+
+func GetPodsImages(ctx context.Context, kubeConfigFile string, imageignore *imageignore.Type) (map[string]*Image, error) { //nolint:lll
+	images := make(map[string]*Image)
 
 	clientset, err := getKubernetesClient(kubeConfigFile)
 	if err != nil {
-		return images, errors.Wrap(err, "error creating kubernetes client")
+		return nil, errors.Wrap(err, "error creating kubernetes client")
 	}
 
-	pods, err := clientset.CoreV1().Pods(*config.Get().Namespace).List(context.TODO(), metav1.ListOptions{})
+	nodes, err := clientset.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
 	if err != nil {
-		return images, errors.Wrap(err, "error get pods")
+		return nil, errors.Wrap(err, "error get nodes")
+	}
+
+	nodeArch := make(map[string]string)
+	for _, node := range nodes.Items {
+		nodeArch[node.Name] = node.Labels["kubernetes.io/arch"]
+	}
+
+	pods, err := clientset.CoreV1().Pods(*config.Get().Namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, errors.Wrap(err, "error get pods")
 	}
 
 	for _, pod := range pods.Items {
@@ -101,19 +121,32 @@ func GetPodsImages(kubeConfigFile string, imageignore *imageignore.Type) (map[st
 			"namespace":      pod.Namespace,
 		})
 
+		image := Image{
+			PodName:   pod.Name,
+			ImageArch: nodeArch[pod.Spec.NodeName],
+		}
+
 		for _, initContainer := range pod.Spec.InitContainers {
-			logContainerInfo(log, initContainer, imageignore)
+			image.ImageName = initContainer.Image
+			image.ImagePullPolicy = string(initContainer.ImagePullPolicy)
+
+			logImage(log, &image, imageignore)
 
 			if _, ok := images[initContainer.Image]; !ok {
-				images[initContainer.Image] = pod
+				images[initContainer.Image] = &Image{
+					PodName: pod.Name,
+				}
 			}
 		}
 
 		for _, container := range pod.Spec.Containers {
-			logContainerInfo(log, container, imageignore)
+			image.ImageName = container.Image
+			image.ImagePullPolicy = string(container.ImagePullPolicy)
+
+			logImage(log, &image, imageignore)
 
 			if _, ok := images[container.Image]; !ok {
-				images[container.Image] = pod
+				images[container.Image] = &image
 			}
 		}
 	}
