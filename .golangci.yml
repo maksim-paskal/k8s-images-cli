@@ -8,3 +8,4 @@ linters:
   - exhaustivestruct
   - exhaustruct
   - depguard
+  - musttag

@@ -45,6 +45,6 @@ func main() {
 	defer cancel()
 
 	if err := internal.Run(ctx); err != nil {
-		log.Fatal(err)
+		log.WithError(err).Error("internal.Run")
 	}
 }
