@@ -6,6 +6,6 @@ test:
 	go test -race ./cmd ./pkg/...
 	go run github.com/golangci/golangci-lint/cmd/golangci-lint@latest run -v
 run:
-	go run -race ./cmd -logLevel=INFO $(args)
+	go run -race ./cmd -logLevel=debug $(args)
 test-release:
-	go run github.com/goreleaser/goreleaser@latest release --snapshot --skip-publish --rm-dist
+	go run github.com/goreleaser/goreleaser@latest release --snapshot --skip-publish --clean

@@ -39,7 +39,12 @@ func main() {
 		os.Exit(0)
 	}
 
-	if err := internal.Run(context.Background()); err != nil {
+	log.Debugf("Using config: %s", config.Get().String())
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	if err := internal.Run(ctx); err != nil {
 		log.Fatal(err)
 	}
 }
