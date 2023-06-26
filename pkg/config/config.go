@@ -13,6 +13,7 @@ limitations under the License.
 package config
 
 import (
+	"encoding/json"
 	"flag"
 	"os"
 )
@@ -22,6 +23,7 @@ type AppConfig struct {
 	ImageIgnoreFile *string
 	LogLevel        *string
 	Namespace       *string
+	NamespaceShort  *string
 	Image           *string
 	ImagePullPolicy *string
 	ImageArch       *string
@@ -31,6 +33,7 @@ type AppConfig struct {
 //nolint:gochecknoglobals
 var appConfig = &AppConfig{
 	Namespace:       flag.String("namespace", "", "filter by namespace"),
+	NamespaceShort:  flag.String("n", "", "filter by namespace short"),
 	LogLevel:        flag.String("logLevel", "INFO", "log level"),
 	KubeConfigFile:  flag.String("kubeconfig", os.Getenv("KUBECONFIG"), "kubeconfig path(s) (comma separated)"),
 	ImageIgnoreFile: flag.String("imageignorefile", ".imageignore", "ignore image file"),
@@ -38,6 +41,23 @@ var appConfig = &AppConfig{
 	ImagePullPolicy: flag.String("imagepoolpolicy", "", "filter by ImagePullPolicy (Always or IfNotPresent or Never)"),
 	ImageArch:       flag.String("arch", "", "filter by Arch (amd64 or arm64)"),
 	ShowArch:        flag.Bool("showArch", false, "show image arch"),
+}
+
+func (a *AppConfig) String() string {
+	b, err := json.Marshal(a)
+	if err != nil {
+		return err.Error()
+	}
+
+	return string(b)
+}
+
+func (a *AppConfig) GetNamespace() *string {
+	if a.NamespaceShort != nil && len(*a.NamespaceShort) > 0 {
+		return a.NamespaceShort
+	}
+
+	return a.Namespace
 }
 
 func Get() *AppConfig {

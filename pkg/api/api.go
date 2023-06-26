@@ -109,7 +109,7 @@ func GetPodsImages(ctx context.Context, kubeConfigFile string, imageignore *imag
 		nodeArch[node.Name] = node.Labels["kubernetes.io/arch"]
 	}
 
-	pods, err := clientset.CoreV1().Pods(*config.Get().Namespace).List(ctx, metav1.ListOptions{})
+	pods, err := clientset.CoreV1().Pods(*config.Get().GetNamespace()).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, errors.Wrap(err, "error get pods")
 	}
