@@ -91,7 +91,7 @@ type Image struct {
 	ImageArch       string
 }
 
-func GetPodsImages(ctx context.Context, kubeConfigFile string, imageignore *imageignore.Type) (map[string]*Image, error) { //nolint:lll
+func GetPodsImages(ctx context.Context, kubeConfigFile string, imageignore *imageignore.Type) (map[string]*Image, error) { //nolint:lll,funlen,cyclop
 	images := make(map[string]*Image)
 
 	clientset, err := getKubernetesClient(kubeConfigFile)
@@ -99,14 +99,17 @@ func GetPodsImages(ctx context.Context, kubeConfigFile string, imageignore *imag
 		return nil, errors.Wrap(err, "error creating kubernetes client")
 	}
 
-	nodes, err := clientset.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, errors.Wrap(err, "error get nodes")
-	}
-
 	nodeArch := make(map[string]string)
-	for _, node := range nodes.Items {
-		nodeArch[node.Name] = node.Labels["kubernetes.io/arch"]
+
+	if *config.Get().ShowArch {
+		nodes, err := clientset.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+		if err != nil {
+			return nil, errors.Wrap(err, "error get nodes")
+		}
+
+		for _, node := range nodes.Items {
+			nodeArch[node.Name] = node.Labels["kubernetes.io/arch"]
+		}
 	}
 
 	pods, err := clientset.CoreV1().Pods(*config.Get().GetNamespace()).List(ctx, metav1.ListOptions{})
@@ -121,9 +124,10 @@ func GetPodsImages(ctx context.Context, kubeConfigFile string, imageignore *imag
 			"namespace":      pod.Namespace,
 		})
 
-		image := Image{
-			PodName:   pod.Name,
-			ImageArch: nodeArch[pod.Spec.NodeName],
+		image := Image{PodName: pod.Name}
+
+		if *config.Get().ShowArch {
+			image.ImageArch = nodeArch[pod.Spec.NodeName]
 		}
 
 		for _, initContainer := range pod.Spec.InitContainers {
@@ -133,9 +137,7 @@ func GetPodsImages(ctx context.Context, kubeConfigFile string, imageignore *imag
 			logImage(log, &image, imageignore)
 
 			if _, ok := images[initContainer.Image]; !ok {
-				images[initContainer.Image] = &Image{
-					PodName: pod.Name,
-				}
+				images[initContainer.Image] = &image
 			}
 		}
 
