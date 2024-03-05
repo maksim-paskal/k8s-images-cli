@@ -2,6 +2,14 @@
 
 Simple tool to view images in your kubernetes cluster
 
+## Install
+
+MacOS
+
+```bash
+brew install maksim-paskal/tap/k8s-images-cli
+```
+
 ## Usage
 
 ```bash
